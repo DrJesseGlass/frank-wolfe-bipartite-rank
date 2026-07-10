@@ -92,3 +92,74 @@ class FWBPRanker:
 
     def decision_function(self, X):
         return _score(self.best_model_, X)
+
+
+def pairwise_hinge_loss(scores, y, margin):
+    """sum over violated pairs of (margin - s_i + s_j), O(N log N)."""
+    sp = scores[y == 1]
+    sn = np.sort(scores[y == 0])
+    csum = np.concatenate([[0.0], np.cumsum(sn)])
+    n = sn.size
+    k = np.searchsorted(sn, sp - margin, side="right")  # s_j <= s_i - margin
+    n_viol = n - k
+    sum_viol = csum[n] - csum[k]
+    return float((margin * n_viol - sp * n_viol).sum() + sum_viol.sum())
+
+
+class FWBPREnsembleRanker:
+    """FW-BPR with exact 1-D line search: each round fits a count-weighted
+    base model, then blends its scores into the running ensemble with the
+    convex-combination coefficient minimizing the pairwise hinge on the
+    training set (the Frank-Wolfe step size). The final scorer is a convex
+    combination of the fitted models; for linear models it collapses to a
+    single weight vector."""
+
+    def __init__(self, estimator, n_iter=10, margin=0.0):
+        self.estimator = estimator
+        self.n_iter = n_iter
+        self.margin = margin
+
+    def fit(self, X, y, X_val=None, y_val=None):
+        from scipy.optimize import minimize_scalar
+        y = np.asarray(y)
+        n_pos, n_neg = int((y == 1).sum()), int((y == 0).sum())
+        N = y.size
+        counts = np.where(y == 1, float(n_neg), float(n_pos))
+        self.models_, self.coefs_, self.history_ = [], [], []
+        s_ens = np.zeros(N)
+        s_val = np.zeros(len(y_val)) if X_val is not None else None
+        for it in range(self.n_iter):
+            w = counts * (N / counts.sum())
+            model = clone(self.estimator)
+            model.fit(X, y, sample_weight=w)
+            s_t = _score(model, X)
+            if it == 0:
+                gamma = 1.0
+            else:
+                res = minimize_scalar(
+                    lambda g: pairwise_hinge_loss(
+                        (1 - g) * s_ens + g * s_t, y, self.margin),
+                    bounds=(0.0, 1.0), method="bounded",
+                    options=dict(xatol=1e-4))
+                gamma = float(res.x)
+            s_ens = (1 - gamma) * s_ens + gamma * s_t
+            self.coefs_ = [c * (1 - gamma) for c in self.coefs_] + [gamma]
+            self.models_.append(model)
+            rec = dict(iter=it, gamma=gamma)
+            if X_val is not None:
+                sv_t = _score(model, X_val)
+                s_val = (1 - gamma) * s_val + gamma * sv_t
+                rec["val_auc"] = roc_auc_score(y_val, s_val)
+            rec["train_auc"] = roc_auc_score(y, s_ens)
+            self.history_.append(rec)
+            counts = violation_counts(s_ens, y, self.margin)
+            if counts.sum() == 0 or gamma < 1e-4:
+                break
+        return self
+
+    def decision_function(self, X):
+        s = np.zeros(X.shape[0])
+        for c, m in zip(self.coefs_, self.models_):
+            if c > 0:
+                s += c * _score(m, X)
+        return s

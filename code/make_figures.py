@@ -62,6 +62,9 @@ print("wrote Figures/polytope_slice.pdf")
 with open(os.path.join(ROOT, "results", "ablation_raw.json")) as f:
     abl = json.load(f)
 
+ls_path = os.path.join(ROOT, "results", "linesearch_raw.json")
+ls = json.load(open(ls_path)) if os.path.exists(ls_path) else {}
+
 panels = [("synthetic_1to50", "fw_lr", "logistic, synthetic (1:36)"),
           ("satimage_4", "fw_svm", "hinge, satimage (1:9)")]
 fig, axes = plt.subplots(1, 2, figsize=(6.6, 2.5), sharex=True)
@@ -78,6 +81,10 @@ for ax, (dname, method, title) in zip(axes, panels):
     ax.plot(t, bm, "-s", ms=3.2, lw=1.6, color="#7a3b00",
             label="best iterate so far")
     ax.fill_between(t, bm - bse, bm + bse, color="#7a3b00", alpha=0.2, lw=0)
+    if dname == "satimage_4" and dname in ls:
+        lc = np.array(ls[dname]["curves"])
+        ax.plot(np.arange(lc.shape[1]), lc.mean(0), "-^", ms=3.2, lw=1.4,
+                color="#2d6a4f", label=r"line-searched ($\gamma^\star$)")
     ax.set_title(title)
     ax.set_xlabel("reweighting iteration $t$")
 ax.legend(loc="lower right")
