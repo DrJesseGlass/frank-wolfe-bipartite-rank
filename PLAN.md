@@ -115,11 +115,46 @@ Headline findings (details in experiments.md §Findings):
   iteration curve rises on imbalanced data (+0.8 pts): iterate selection on
   small validation splits is the bottleneck.
 
-**Open follow-up experiments (not yet run):**
-- [ ] Better iterate selection for fw_lr: larger val fraction, pooled
-      selection, or training-side selection via the sandwich certificate.
-- [ ] Wrap the tree model (HistGradientBoosting) in FW-BPR — plug-in claim.
-- [ ] Optional: margin sweep for fw_lr (0 vs 2 on log-odds).
+**Follow-up experiments: DONE 2026-07-10** → `results/followup.md`
+(+ `followup_exp1.json`, `followup_exp2.json`, `followup.log`).
+- Iterate selection fixed via inner-2-fold (C, t) cross-fitting: fw_lr now
+  +0.59 pts on synthetic 1:36 (10/15 folds), selects t=0 (i.e. falls back to
+  balanced, no harm) where balanced is already optimal. Margin 2 on log-odds
+  adds nothing over margin 0.
+- Tree wrap: GBT interpolates (train AUC 1.0) → counts vanish → fw_gbt ≡
+  gbt_balanced exactly; static balancing itself doesn't help GBT on these
+  sets. Open extension (not run): out-of-fold counts / calibrated margins.
+
+**Overall empirical verdict for the paper:** count-reweighting is a faithful
+O(N log N) substitute for pairwise training (exact at the gradient level,
+matches RankSVM and pairwise-logistic nets everywhere), a safe free option
+over static balancing with cross-fitted selection, but NOT a broad
+improvement over balanced/plain BCE — consistent with AUC-consistency theory.
+Frame as equivalence + geometry + certificate paper, not a new-SOTA method.
+
+## Phase 2b — Deep-net verification (added 2026-07-10, user request)
+
+Claim to verify: count-reweighting approximates the pairwise objective for
+ANY differentiable scorer, because of a gradient identity — grad_theta of the
+pairwise loss equals grad_theta of a count-weighted linear score loss (hard
+counts for the margin hinge, sigmoid soft counts for pairwise logistic).
+Script: `code/deepnet_check.py` (PyTorch).
+
+- Part A (exact identity, float64 autograd, 5 seeds):
+  **PASS — hinge diff exactly 0.0, logistic diff ~1e-13.**
+- Part B (MLP 64-64, per-epoch count-refreshed weighted BCE vs static
+  balanced BCE vs full pairwise-logistic training; 5 splits, epoch selection
+  on validation; synthetic_1to50, satimage_4, abalone_19, spambase):
+  **DONE** → `results/deepnet.md` §Findings. fw_bce tracks pair_logistic
+  within noise on all 4 datasets (wins 5/5 satimage, 4/5 abalone splits) at
+  1.3–4.4× lower per-epoch cost; caveat — plain BCE with validation-epoch
+  selection is already a strong AUC baseline on tabular MLPs, and even true
+  pairwise training doesn't beat it there, so the claim to make is
+  "faithful cheap substitute for pairwise training," not "beats BCE".
+
+Paper relevance: extends cor:fw_bridge beyond linear models; connects to
+hard-example mining / ArcFace-style weighted-classification losses and deep
+AUC maximization (cite Yang & Ying 2022, LibAUC).
 
 ## Phase 3 — Paper integration (after 1 & 2)
 

@@ -1,0 +1,21 @@
+Part A: gradient identity through an MLP (float64 autograd)
+  seed 0: max|grad diff| hinge=0.00e+00, logistic=5.68e-14
+  seed 1: max|grad diff| hinge=0.00e+00, logistic=4.26e-14
+  seed 2: max|grad diff| hinge=0.00e+00, logistic=4.26e-14
+  seed 3: max|grad diff| hinge=0.00e+00, logistic=4.97e-14
+  seed 4: max|grad diff| hinge=0.00e+00, logistic=8.53e-14
+Part A: PASS
+
+Part B: MLP training comparison
+  breast_cancer: n=569, d=30, pos=212 (1:1.7)
+  synthetic_1to50: n=4000, d=20, pos=108 (1:36.0)
+  pima_diabetes: n=768, d=8, pos=268 (1:1.9)
+  german_credit: n=1000, d=20, pos=300 (1:2.3)
+  spambase: n=4601, d=57, pos=1813 (1:1.5)
+  satimage_4: n=6430, d=36, pos=625 (1:9.3)
+  abalone_19: n=4177, d=8, pos=94 (1:43.4)
+  synthetic_1to50: bce_plain=0.7969±0.065 bce_balanced=0.7869±0.069 fw_bce=0.7776±0.071 pair_logistic=0.7840±0.069 
+  satimage_4: bce_plain=0.9529±0.006 bce_balanced=0.9565±0.004 fw_bce=0.9602±0.004 pair_logistic=0.9555±0.006 
+  abalone_19: bce_plain=0.9186±0.018 bce_balanced=0.9094±0.015 fw_bce=0.9146±0.018 pair_logistic=0.9091±0.013 
+  spambase: bce_plain=0.9817±0.004 bce_balanced=0.9817±0.004 fw_bce=0.9807±0.004 pair_logistic=0.9813±0.004 
+Wrote results/deepnet.md
