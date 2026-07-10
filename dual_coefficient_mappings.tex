@@ -332,9 +332,9 @@ Theorem~\ref{thm:equivalence} reduces the pairwise dual to minimizing the
 balanced dual objective over $\mathcal{T} = \Phi(\mathcal{R})$. We now
 characterize $\mathcal{T}$ exactly. Write $\Lambda := \sum_i \lambda_i =
 \sum_j \lambda_j$ for the common one-sided mass of a point satisfying the
-equality constraint, and let $L^+(a)$ (resp.\ $L^-(b)$) denote the sum of the
-$a$ largest positive-example coefficients (resp.\ $b$ largest
-negative-example coefficients).
+equality constraint, and let $L^+(a)$ denote the sum of the $a$ largest
+coefficients among the positive examples and $L^-(b)$ the sum of the $b$
+largest coefficients among the negative examples.
 
 \begin{theorem}[Exact image]
 \label{thm:image}
@@ -368,7 +368,9 @@ under a linear map is the convex hull of the images of its vertices, and
 $\Phi(\bar{C}\,\mathbbm{1}_s) = \bar{C}\,\mathcal{S}e_s$ by
 \eqref{eq:pair_counts}.
 
-(ii) The question is feasibility of a transportation problem: does there
+(ii) Necessity of $\lambda \ge 0$ and of the equal-sum condition is
+Theorem~\ref{thm:equivalence}(iii), so only \eqref{eq:gale} requires an
+argument. The question is feasibility of a transportation problem: does there
 exist $\rho \in [0,\bar{C}]^{n^+ \times n^-}$ with prescribed row sums
 $\lambda_i$ and column sums $\lambda_j$? Model it as a flow network: source
 $\sigma \to$ row $i$ with capacity $\lambda_i$; row $i \to$ column $j$ with
@@ -392,7 +394,12 @@ $\sum_{j \notin T}\lambda_j = \Lambda - L^-(b)$ gives \eqref{eq:gale}. Cases
 $a = 0$ or $b = 0$ are implied by nonnegativity and the equal-sum condition.
 
 (\emph{Strictness.}) Example~\ref{ex:strict} below exhibits, for
-$n^+ = n^- = 2$, a point of $\mathcal{B}$ violating \eqref{eq:gale}.
+$n^+ = n^- = 2$, a point of $\mathcal{B}$ violating \eqref{eq:gale}; for
+general $n^+, n^- \ge 2$, pad it with zeros
+($\lambda^+ = (2\bar{C}, 0, \dots, 0)$,
+$\lambda^- = (2\bar{C}, 0, \dots, 0)$): the box bounds
+$2\bar{C} \le \bar{C}n^\mp$ still hold, and $a = b = 1$ still gives
+$4\bar{C} > \Lambda + \bar{C} = 3\bar{C}$.
 \end{proof}
 
 \begin{example}[$\mathcal{T}$ is strictly smaller than
@@ -414,7 +421,8 @@ negative example carrying mass. Concretely, no $\rho \in [0,\bar{C}]^{2\times
 Whether $\lambda \in \mathcal{T}$ can be decided by a single maximum-flow
 computation on the bipartite network of Theorem~\ref{thm:image}(ii) (with
 $n^+ + n^- + 2$ nodes), or by checking the $n^+ n^-$ sorted prefix conditions
-\eqref{eq:gale} after two sorts. A witness $\rho$ with $\Phi(\rho) = \lambda$
+\eqref{eq:gale} after two sorts (together with nonnegativity and the
+equal-sum check). A witness $\rho$ with $\Phi(\rho) = \lambda$
 is recovered from the flow itself. Consequently, the successive-tightening
 algorithms of Section~\ref{sec:algorithms} have an efficient certificate for
 ``the current iterate is (nearly) pairwise-feasible,'' and Euclidean
