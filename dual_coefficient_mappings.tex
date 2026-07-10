@@ -154,7 +154,7 @@ with $w = \sum_k t_k \lambda_k x_k$ at optimality. The equality constraint in
 \label{sec:background}
 
 The structural SVM and its (block-coordinate) Frank--Wolfe optimizers
-% TODO: cite Joachims (2005, 2006); Lacoste-Julien, Jaggi, Schmidt, Pletscher (2013)
+\citep{joachims2005,joachims2006,lacostejulien2013}
 work with dual coefficients $\alpha$ indexed by \emph{joint labelings}
 (vertices) rather than by examples. For a decomposable hinge, each vertex
 $s \in \{0,1\}^N$ marks which examples are margin-violated, and the linear
@@ -169,8 +169,7 @@ coefficients to example coefficients:
 The two background lemmas below record that nothing is lost by tracking
 $\lambda$ instead of $\alpha$; they are essentially the known equivalence
 between the error-rate structural SVM and the classification SVM
-% TODO: cite Joachims (2006), Theorem 1
-and are stated in the form used later.
+\citep[Theorem~1]{joachims2006} and are stated in the form used later.
 
 \begin{lemma}[Per-example blocks: bijection]
 \label{lem:block_bijection}
@@ -428,7 +427,6 @@ algorithms of Section~\ref{sec:algorithms} have an efficient certificate for
 ``the current iterate is (nearly) pairwise-feasible,'' and Euclidean
 projection onto $\mathcal{T}$ is a quadratic program over the same flow
 polytope.
-% TODO: fix \ref{sec:algorithms} to the actual label of the Algorithms section.
 \end{corollary}
 
 \subsection{Consequences}
@@ -491,22 +489,23 @@ Corollary~\ref{cor:sandwich} they lower-bound the pairwise optimum whenever
 they leave it. The algorithms exploit this deliberately -- an iterate is
 pulled back toward $\mathcal{T}$ only when doing so does not worsen the
 margin -- and Corollary~\ref{cor:membership} supplies the test.
-% TODO: fix \ref{sec:algorithms} to the actual label of the Algorithms section.
 \end{remark}
 
-% ----------------------------------------------------------------------------
-% Figure: update the old Coeff_Maps.png caption to match the new statement.
-% Suggested replacement:
-%
-% \begin{figure}
-%     \centering
-%     \includegraphics[scale=.8]{Figures/Coeff_Maps.png}
-%     \caption{Dual coefficient domains. The pairwise Frank--Wolfe simplex
-%     maps (via the misordering-count operator $\mathcal{S}$) onto the
-%     capacitated transportation polytope $\mathcal{T}$, which sits strictly
-%     inside the balanced classification dual feasible set $\mathcal{B}$
-%     (box $\cap$ intercept hyperplane). The dual objective $D$ is identical
-%     on $\mathcal{T}$ for both problems (Theorem~\ref{thm:equivalence}).}
-%     \label{fig:coeff_maps}
-% \end{figure}
-% ----------------------------------------------------------------------------
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.5\textwidth]{Figures/polytope_slice.pdf}
+    \caption{An exact two-dimensional slice of the dual domains for
+    $n^+ = n^- = 2$, $\bar{C} = 1$, at one-sided mass $\Lambda = 2$:
+    coordinates $(\lambda^+_1, \lambda^-_1)$ with
+    $\lambda^+_2 = 2 - \lambda^+_1$, $\lambda^-_2 = 2 - \lambda^-_1$. The
+    balanced feasible set $\mathcal{B}$ (box $\cap$ intercept hyperplane)
+    slices to the square; the transportation polytope $\mathcal{T}$ slices
+    to the inscribed diamond -- here \eqref{eq:gale} reduces to
+    $|\lambda^+_1 - 1| + |\lambda^-_1 - 1| \le 1$ -- whose corners and
+    center are the misordering-count vertices $\bar{C}\,\mathcal{S}e_s$
+    lying in the slice. The cross marks the point of
+    Example~\ref{ex:strict}, feasible for $\mathcal{B}$ but not for
+    $\mathcal{T}$. The dual objective $D$ is identical on $\mathcal{T}$ for
+    both problems (Theorem~\ref{thm:equivalence}).}
+    \label{fig:coeff_maps}
+\end{figure}
