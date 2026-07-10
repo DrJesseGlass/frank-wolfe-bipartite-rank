@@ -177,10 +177,23 @@ def main():
     print("Loading datasets...")
     datasets = load_datasets(quick=quick)
     n_repeats = 2 if quick else 5
+    n_folds = 3 * n_repeats
     rskf = RepeatedStratifiedKFold(n_splits=3, n_repeats=n_repeats,
                                    random_state=42)
+    # resume from checkpoint: skip datasets already fully evaluated
+    ckpt_path = os.path.join(RESULTS_DIR, "experiments_raw.json")
     results = {}
+    if "--fresh" not in sys.argv and os.path.exists(ckpt_path):
+        with open(ckpt_path) as f:
+            prev = json.load(f)
+        for dname, per in prev.items():
+            if (dname in datasets and set(per) == set(METHODS)
+                    and all(len(v) == n_folds for v in per.values())):
+                results[dname] = per
+                print(f"  [resume] {dname}: loaded {n_folds} folds from checkpoint")
     for dname, (X, y) in datasets.items():
+        if dname in results:
+            continue
         results[dname] = {m: [] for m in METHODS}
         t0 = time.time()
         for fold, (tr, te) in enumerate(rskf.split(X, y)):

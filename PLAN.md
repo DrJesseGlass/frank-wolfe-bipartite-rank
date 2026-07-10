@@ -103,8 +103,23 @@ optionally gradient-boosted trees.
 regularization on val AUC, report test AUC mean ± std. Key ablation:
 AUC vs. reweighting iteration t (t=0 is the balanced baseline).
 
-**Status: not started** (blocked on Phase 1 passing). Results will land in
-`results/experiments.md` + raw JSON.
+**Status: DONE 2026-07-10** — full results in `results/experiments.md`
+(+ `experiments_raw.json`, `ablation.md`, `ablation_raw.json`).
+Headline findings (details in experiments.md §Findings):
+- fw_svm ≈ RankSVM on all 7 datasets without forming pairs (best empirical
+  support for cor:fw_bridge); repairs plain SVM by +5–8 pts under imbalance;
+  edges static svm_balanced on pima/satimage (12/15 folds each).
+- Balanced logistic already matches RankSVM (theory-consistent: first FW
+  step + Kotlowski/Agarwal) — supports the "logistic beats SSVM" observation.
+- fw_lr ≈ lr_balanced under validation selection even though the fixed-C
+  iteration curve rises on imbalanced data (+0.8 pts): iterate selection on
+  small validation splits is the bottleneck.
+
+**Open follow-up experiments (not yet run):**
+- [ ] Better iterate selection for fw_lr: larger val fraction, pooled
+      selection, or training-side selection via the sandwich certificate.
+- [ ] Wrap the tree model (HistGradientBoosting) in FW-BPR — plug-in claim.
+- [ ] Optional: margin sweep for fw_lr (0 vs 2 on log-odds).
 
 ## Phase 3 — Paper integration (after 1 & 2)
 
