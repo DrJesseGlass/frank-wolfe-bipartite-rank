@@ -22,5 +22,71 @@
   "val_auc": 0.9031818684355999,
   "best_epoch": 10,
   "detect_auroc": NaN
+ },
+ "pair_batch_s0": {
+  "test_auc": 0.9705985000000001,
+  "val_auc": 0.9545118850193477,
+  "best_epoch": 12,
+  "detect_auroc": NaN
+ },
+ "bce_s1": {
+  "test_auc": 0.9645116666666668,
+  "val_auc": 0.9573156440022111,
+  "best_epoch": 14,
+  "detect_auroc": NaN
+ },
+ "bce_bal_s1": {
+  "test_auc": 0.9655772222222222,
+  "val_auc": 0.9644886677722498,
+  "best_epoch": 11,
+  "detect_auroc": NaN
+ },
+ "fw_hard_s1": {
+  "test_auc": 0.9581957777777778,
+  "val_auc": 0.9484002211166391,
+  "best_epoch": 13,
+  "detect_auroc": NaN
+ },
+ "fw_soft_s1": {
+  "test_auc": 0.9465231111111111,
+  "val_auc": 0.9380342730790492,
+  "best_epoch": 11,
+  "detect_auroc": NaN
+ },
+ "pair_batch_s1": {
+  "test_auc": 0.9672242222222223,
+  "val_auc": 0.9652979546710889,
+  "best_epoch": 11,
+  "detect_auroc": NaN
+ },
+ "bce_s2": {
+  "test_auc": 0.9704012222222221,
+  "val_auc": 0.9608711995577668,
+  "best_epoch": 10,
+  "detect_auroc": NaN
+ },
+ "bce_bal_s2": {
+  "test_auc": 0.9671643333333333,
+  "val_auc": 0.9600442233278055,
+  "best_epoch": 14,
+  "detect_auroc": NaN
+ },
+ "fw_hard_s2": {
+  "test_auc": 0.9491727777777776,
+  "val_auc": 0.9439071310116086,
+  "best_epoch": 10,
+  "detect_auroc": NaN
+ },
+ "fw_soft_s2": {
+  "test_auc": 0.9245234444444446,
+  "val_auc": 0.9228700939745716,
+  "best_epoch": 4,
+  "detect_auroc": NaN
+ },
+ "pair_batch_s2": {
+  "test_auc": 0.9688217222222223,
+  "val_auc": 0.9680574903261471,
+  "best_epoch": 13,
+  "detect_auroc": NaN
  }
 }
