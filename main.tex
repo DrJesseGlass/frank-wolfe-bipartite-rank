@@ -1,0 +1,398 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{dsfont}
+% shim: dual_coefficient_mappings.tex uses \mathbbm; the bbm fonts lack
+% Type1 versions, so map onto doublestroke
+\newcommand{\mathbbm}[1]{\mathds{#1}}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[round]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
+
+\title{Bipartite Ranking with the Pairwise Hinge is Balanced
+Classification over a Transportation Polytope}
+\author{Jesse Glass}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We show that the dual of the pairwise-hinge bipartite ranking SVM (RankSVM)
+is \emph{exactly} the dual of a balanced cost-sensitive classification SVM,
+restricted to a capacitated transportation polytope. Under a margin-2
+convention the two dual objectives coincide -- not merely up to constants --
+and the classification intercept constraint arises automatically. We
+characterize the restricted domain exactly: it is the convex hull of
+per-example \emph{misordering-count} vectors, described by Gale-type
+inequalities, with membership decidable by a single maximum-flow computation
+that also returns a dual witness. Consequences: (i) the balanced solution
+lower-bounds the RankSVM dual optimum, and any transportation-feasible point
+upper-bounds it, giving a computable optimality certificate; (ii) every
+Frank--Wolfe step on the pairwise dual is a sample-weighted classification
+problem whose weights count misordered opposite-class examples, and balanced
+classification is precisely the first Frank--Wolfe step; (iii) at the
+gradient level the equivalence holds for \emph{any} differentiable scorer:
+the parameter gradient of a decomposable pairwise loss equals the gradient of
+a count-weighted univariate loss, whose weights for the pairwise hinge are
+computable in $O(N\log N)$ without forming pairs. This geometry unifies a family of known efficiency results and
+reweighting heuristics -- structural-SVM cutting planes, sorted-gradient
+RankSVM solvers, LambdaMART's per-document lambdas, hard-example mining --
+as views of one object. Experiments confirm the theory's predictions,
+including the negative ones: count-reweighted classifiers match RankSVM and
+pairwise-loss networks everywhere at a fraction of the cost, while offering
+only situational gains over static balanced weighting, exactly as
+AUC-consistency theory implies.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:intro}
+
+Bipartite ranking asks for a scoring function that places positive examples
+above negative ones; its canonical empirical objective is the area under the
+ROC curve (AUC), and its canonical convex surrogate is the pairwise hinge
+over all positive--negative pairs \citep{herbrich2000,joachims2002}. Taken
+literally, the pairwise objective couples $n^+ n^-$ terms, and a substantial
+literature exists on evaluating or optimizing it without enumerating pairs
+\citep{joachims2005,chapelle2010,airola2011,ying2016}. A parallel statistical
+literature shows that pairs are unnecessary in a deeper sense: minimizing a
+class-balanced \emph{univariate} loss is AUC-consistent, with explicit
+surrogate regret bounds \citep{kotlowski2011,agarwal2014}.
+
+This paper gives the exact finite-sample geometry underlying both
+observations. Our main results concern the Lagrangian duals of the two
+problems. Let the pairwise SVM be taken with margin $2$ (a rescaling of the
+standard formulation; Remark~\ref{rem:margin2}) and let the balanced
+classification SVM weight each example by the empirical frequency of the
+\emph{opposite} class. Then, under the natural row/column-sum map from pair
+multipliers to example multipliers:
+\begin{enumerate}
+\item \textbf{Equivalence (Theorem~\ref{thm:equivalence}).} The pairwise dual
+objective \emph{equals} the balanced classification dual objective -- same
+quadratic form, same linear term -- and the intercept constraint of the
+classification dual holds automatically. The pairwise dual is the balanced
+dual restricted to a subdomain $\mathcal{T}$.
+\item \textbf{Geometry (Theorem~\ref{thm:image}).} $\mathcal{T}$ is a
+capacitated transportation polytope: the convex hull of scaled
+\emph{misordering-count} vectors, cut out by Gale-type inequalities
+\citep{gale1957}, with membership decidable by one max-flow computation on a
+network with $n^+ + n^- + 2$ nodes (Corollary~\ref{cor:membership}). It is
+strictly smaller than the balanced dual's box-plus-hyperplane domain.
+\item \textbf{Certificate (Corollary~\ref{cor:sandwich}).} The balanced
+optimum lower-bounds the pairwise optimum; any point of $\mathcal{T}$
+upper-bounds it. The gap is computable and vanishes exactly when the
+balanced solution is transportation-feasible.
+\item \textbf{Beyond linear models (Proposition~\ref{prop:gradient}).} For
+any differentiable scorer, the parameter gradient of a decomposable pairwise
+loss equals the gradient of a per-example loss weighted by (soft) violation
+counts, frozen at the current scores. Count-reweighted training \emph{is}
+pairwise training at the gradient level, at $O(N \log N)$ per evaluation for
+the hinge.
+\end{enumerate}
+The picture that emerges is summarized by
+Corollary~\ref{cor:fw_bridge}: running Frank--Wolfe
+\citep{frank1956,jaggi2013} on the pairwise dual is running Frank--Wolfe on
+$\mathcal{T}$, each linear-minimization step is a weighted classification
+problem whose weights are misordering counts, and \emph{balanced
+classification is exactly the first step}. This explains, in one frame, why
+balanced univariate training is so hard to beat for AUC
+\citep{kotlowski2011}, why structural-SVM cutting planes for ROC area reduce
+to sorting \citep{joachims2005}, why primal RankSVM gradients collapse to
+per-example counts \citep{chapelle2010}, why gradient-boosted ranking works
+from per-document ``lambdas'' \citep{burges2010}, and why hard-example
+mining heuristics \citep{shrivastava2016,lin2017} succeed: each example's
+principled ``hardness'' weight is the number of opposite-class examples that
+outrank it.
+
+We claim no new state-of-the-art method, and our experiments
+(Section~\ref{sec:experiments}) are designed to test the theory's
+predictions rather than to win benchmarks. They confirm: count-reweighted
+classifiers reproduce RankSVM (linear) and pairwise-logistic training (MLPs)
+within noise on every dataset tried, at $1.3$--$4.4\times$ lower cost per
+epoch and better asymptotic complexity; iterated reweighting with
+cross-fitted model selection behaves as a ``free option'' over balanced
+weighting -- it selects the balanced solution when that is optimal and
+harvests modest gains when headroom exists; and, as consistency theory
+predicts, neither pairwise training nor its reweighted equivalent broadly
+beats plain or balanced univariate baselines on generic tabular data. The
+contribution is the geometry, the certificate, and the unification.
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Efficient pairwise training.} That the pairwise hinge can be
+optimized without materializing pairs is well established.
+\citet{joachims2005} trains an ROC-area structural SVM whose cutting-plane
+oracle runs in $O(N \log N)$ by sorting; \citet{joachims2006} shows the
+error-rate structural SVM is equivalent to a classification SVM.
+\citet{chapelle2010} solve primal RankSVM with Newton methods whose
+objective and gradient are evaluated in $O(N \log N)$; \citet{airola2011}
+achieve linearithmic training with order-statistic trees. In learning to
+rank, LambdaRank/LambdaMART collapse pairwise gradients into per-document
+weights \citep{burges2010}. For the square surrogate, \citet{ying2016}
+remove pairs entirely via a min-max reformulation, the basis of large-scale
+deep AUC maximization \citep{yuan2021,yang2022}. Our contribution relative
+to this line is not efficiency but structure: these algorithms implicitly
+traverse the transportation polytope $\mathcal{T}$; we name the object,
+characterize it exactly, and equip it with a membership test and an
+optimality certificate none of the above provide.
+
+\paragraph{Statistical equivalences.} \citet{kotlowski2011} and
+\citet{agarwal2014} show balanced univariate losses are AUC-consistent with
+explicit regret transfer; \citet{ertekin2011} prove AdaBoost and RankBoost
+are equivalent in a precise sense; \citet{clemencon2008} give the
+$U$-statistics theory of pairwise ERM. These are asymptotic or
+population-level statements; Theorem~\ref{thm:equivalence} is their exact
+finite-sample, fixed-regularization counterpart at the level of dual
+programs, and Corollary~\ref{cor:sandwich} quantifies the finite-sample gap
+between balanced and pairwise solutions.
+
+\paragraph{Frank--Wolfe for structured duals.} Block-coordinate Frank--Wolfe
+for structural SVMs \citep{lacostejulien2013} popularized dual optimization
+via linear-minimization oracles. Corollary~\ref{cor:fw_bridge} identifies
+the pairwise-ranking LMO with a weighted classification problem, which makes
+plug-in, dual-free implementations possible
+(Section~\ref{sec:algorithms}).
+
+\paragraph{Reweighting heuristics.} Online hard example mining
+\citep{shrivastava2016}, focal loss \citep{lin2017}, and margin-based
+weighted-classification losses in metric learning \citep{deng2019} weight
+examples by difficulty. Proposition~\ref{prop:gradient} supplies the
+principled special case: for bipartite objectives, the exact pairwise-loss
+gradient is recovered by weighting each example with its count of violated
+pairs.
+
+% ---------------------------------------------------------------------------
+\input{dual_coefficient_mappings}
+% ---------------------------------------------------------------------------
+
+\section{Beyond Linear Models: the Gradient Identity}
+\label{sec:gradient}
+
+The dual equivalence above is specific to the SVM. Its engine, however, is a
+chain-rule fact that holds for any differentiable scorer, including deep
+networks.
+
+\begin{proposition}[Count-weighted gradients]
+\label{prop:gradient}
+Let $s_\theta : \mathbbm{R}^d \to \mathbbm{R}$ be differentiable in
+$\theta$, write $s_k = s_\theta(x_k)$, and let
+$\ell : \mathbbm{R} \to \mathbbm{R}$ be a differentiable (or almost
+everywhere differentiable) pairwise surrogate applied to score differences,
+\[
+L_{\mathrm{pair}}(\theta)
+= \sum_{i=1}^{n^+} \sum_{j=1}^{n^-} \ell\bigl(s_i - s_j\bigr).
+\]
+Define per-example weights frozen at the current scores,
+\[
+c_i = -\sum_{j} \ell'(s_i - s_j), \qquad
+c_j = -\sum_{i} \ell'(s_i - s_j).
+\]
+Then
+\[
+\nabla_\theta L_{\mathrm{pair}}
+= \nabla_\theta \Bigl( \sum_j c_j\, s_j - \sum_i c_i\, s_i \Bigr)
+\Big|_{c\ \mathrm{frozen}} .
+\]
+For the margin hinge $\ell(u) = [\,m - u\,]_+$ the weights are the
+\emph{violation counts} $c_i = \#\{j : s_i - s_j < m\}$ and
+$c_j = \#\{i : s_i - s_j < m\}$, computable for all examples in
+$O(N \log N)$ by two sorts. For the logistic surrogate
+$\ell(u) = \log(1 + e^{-u})$ they are the soft counts
+$c_i = \sum_j \sigma(s_j - s_i)$; unlike the hard counts, evaluating the
+soft counts exactly costs $O(n^+ n^-)$ (they can be approximated in
+near-linear time, e.g.\ by binning the opposite-class scores, but we do not
+rely on this).
+\end{proposition}
+
+\begin{proof}
+By the chain rule, $\nabla_\theta L_{\mathrm{pair}} = \sum_k
+(\partial L_{\mathrm{pair}} / \partial s_k) \nabla_\theta s_k$, and
+$\partial L_{\mathrm{pair}} / \partial s_i = \sum_j \ell'(s_i - s_j) = -c_i$
+for positives, $\partial L_{\mathrm{pair}} / \partial s_j =
+-\sum_i \ell'(s_i - s_j) = c_j$ for negatives. The frozen-weight linear
+objective has the same per-score derivatives, hence the same
+$\theta$-gradient. The hinge and logistic weight formulas are immediate; the
+$O(N \log N)$ claim follows by sorting scores and locating each
+$s_i - m$ among opposite-class scores by binary search.
+\end{proof}
+
+Proposition~\ref{prop:gradient} says count-reweighted training \emph{is}
+pairwise training, one gradient step at a time, for any architecture: an SGD
+trajectory on the pairwise loss coincides with an SGD trajectory on the
+count-weighted univariate objective whose weights are refreshed at every
+step. Refreshing every step is free for the hinge ($O(N\log N)$); refreshing
+less often (per epoch, as in Section~\ref{sec:experiments}) gives a lagged
+approximation. Two practical caveats follow directly from the formula.
+First, if the model interpolates the training ranking, all hard counts
+vanish and the update stalls; a positive margin $m$ (or soft counts) keeps
+the weights alive. Second, the identity concerns \emph{gradients}, not
+minimizers: with weight decay, normalization layers, or adaptive optimizers,
+lagged reweighting and true pairwise training may drift apart, and we
+observe (Section~\ref{sec:experiments}) that the drift is within noise at
+per-epoch refresh rates on the problems tried.
+
+\section{A Dual-Free Meta-Algorithm}
+\label{sec:algorithms}
+
+Theorem~\ref{thm:equivalence}, Corollary~\ref{cor:fw_bridge}, and
+Proposition~\ref{prop:gradient} license the following meta-algorithm, which
+never touches dual variables and treats the base learner as a black box that
+accepts per-example weights.
+
+\begin{algorithm}[t]
+\caption{FW-BPR: iteratively reweighted bipartite ranking}
+\label{alg:fwbpr}
+\begin{algorithmic}[1]
+\REQUIRE weight-accepting learner $\mathcal{A}$, data
+$\{(x_k, t_k)\}_{k=1}^N$, margin $m \ge 0$, rounds $T$
+\STATE $c_k \leftarrow n^-$ for positives, $c_k \leftarrow n^+$ for
+negatives \COMMENT{balanced start $=$ first FW step}
+\FOR{$t = 0, 1, \dots, T-1$}
+  \STATE $f_t \leftarrow \mathcal{A}\bigl(\{(x_k, t_k)\},\,
+  \mathrm{weights} \propto c\bigr)$; \quad $s_k \leftarrow f_t(x_k)$
+  \STATE $c_i \leftarrow \#\{ j : s_i - s_j < m \}$ for positives;\quad
+  $c_j \leftarrow \#\{ i : s_i - s_j < m \}$ for negatives
+  \COMMENT{$O(N \log N)$}
+  \IF{$\sum_k c_k = 0$ \textbf{or} counts unchanged} \STATE \textbf{break}
+  \ENDIF
+\ENDFOR
+\RETURN $f_{t^\star}$, $t^\star$ chosen on validation data (cross-fitted)
+\end{algorithmic}
+\end{algorithm}
+
+Three readings of Algorithm~\ref{alg:fwbpr}, in decreasing order of rigor.
+\emph{(a) Linear SVM base learner, margin $2$:} each round solves the
+Frank--Wolfe linear-minimization problem of the pairwise dual exactly
+(Corollary~\ref{cor:fw_bridge}); iterates that maintain a convex combination
+of the visited vertices inherit standard Frank--Wolfe convergence to the
+RankSVM solution \citep{jaggi2013,lacostejulien2013}, and
+Corollaries~\ref{cor:membership} and~\ref{cor:sandwich} provide a computable
+optimality gap. Solving each round's weighted problem to optimality instead
+(a trust-region variant over the box $[0, \bar{C}\omega]$,
+Remark~\ref{rem:relaxation}) is a \emph{relaxation}: its iterates may leave
+$\mathcal{T}$, in which case they lower-bound the pairwise optimum and the
+max-flow test certifies the violation. \emph{(b) Differentiable base
+learner:} by Proposition~\ref{prop:gradient} the procedure performs lagged
+gradient descent on the pairwise surrogate. \emph{(c) Arbitrary base learner
+(trees, boosting):} the procedure is a heuristic guided by the same weights;
+if the learner interpolates the training ranking, the counts vanish and the
+method provably returns the balanced fit -- a failure mode we exhibit
+empirically below.
+
+\section{Experiments}
+\label{sec:experiments}
+
+All code and raw results accompany the paper.\footnote{Verification suite
+and experiment harness in the project repository; the theorem suite runs
+241 numerical checks of every claim in
+Section~\ref{sec:dual_maps} (duality gaps $\le 10^{-10}$, Gale/max-flow
+agreement on all sampled points).} We use seven binary datasets spanning
+imbalance ratios $1{:}1.5$ to $1{:}43$ (breast\_cancer, pima, german
+credit, spambase, satimage class-4, abalone rings $\ge 19$, and a synthetic
+$1{:}36$ Gaussian mixture), with $3$-fold $\times$ $5$-repeat stratified
+cross-validation; regularization and the FW-BPR iterate are selected on
+validation data only. Full tables appear in the supplementary results
+files; we summarize the four findings.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{Figures/auc_vs_iteration.pdf}
+\caption{Test AUC by reweighting round (mean $\pm$ standard error over 15
+folds, fixed $C = 1$; grey dashed line: balanced fit, $t = 0$). Thin
+curve: raw iterates. On the extreme-imbalance synthetic set (left,
+logistic base learner) the raw sequence \emph{oscillates}: a full refit at
+the new counts is a jump to a polytope vertex with no line search, weight
+mass concentrates on the few violated examples, and successive vertices
+over-correct, alternating between strong and inverted rankings. Bold
+curve: best-iterate-so-far per fold, the quantity harvested by
+cross-fitted selection ($+0.6$ points over balanced on the left; right:
+hinge base learner on satimage). Near-balanced datasets are flat at the
+dashed line (not shown).}
+\label{fig:auc_iter}
+\end{figure}
+
+\paragraph{1. Count reweighting reproduces pairwise training.} A linear SVM
+wrapped in Algorithm~\ref{alg:fwbpr} (margin 2) matches an explicit RankSVM
+(pairwise hinge on difference vectors) on all seven datasets: mean paired
+AUC differences are at most $0.004$ and per-fold wins split evenly. The same
+holds for MLPs: per-epoch count-refreshed weighted cross-entropy tracks full
+pairwise-logistic training within noise on all four datasets tried (winning
+$5/5$ and $4/5$ paired splits on two of them), while a pairwise epoch costs
+$1.3$--$4.4\times$ more at these sizes and scales as $O(n^+ n^-)$ against
+$O(N \log N)$. The gradient identity itself was verified through an MLP by
+automatic differentiation: hinge gradients agree \emph{exactly} (difference
+$0$ in float64), logistic gradients to $10^{-13}$.
+
+\paragraph{2. Iterating is a free option over balancing.} With cross-fitted
+joint selection of $(C, t)$, FW-BPR-logistic gains $+0.6$ AUC points over
+balanced logistic on the dataset with headroom (synthetic $1{:}36$, winning
+$10/15$ folds, median selected $t = 6$) and \emph{selects $t = 0$} -- i.e.,
+returns the balanced solution, at no loss -- where balancing is already
+optimal (Figure~\ref{fig:auc_iter}). Selection over iterates is not
+optional: the raw refit sequence is vertex-hopping without line search and
+can oscillate on extreme imbalance (Figure~\ref{fig:auc_iter}, left) --
+the discrete analogue of Frank--Wolfe's need for step sizes or convex
+combinations \citep{jaggi2013}. Under naive single-split selection the
+harvestable gains are destroyed by selection noise; the small validation
+sets of heavily imbalanced problems contain few positives, and this, not
+the optimization, is the binding constraint.
+
+\paragraph{3. The negative results are the theory's own predictions.}
+Balanced logistic regression already matches RankSVM everywhere (winning up
+to $14/15$ folds on some datasets) -- the first Frank--Wolfe step plus
+AUC-consistency \citep{kotlowski2011,agarwal2014} predicts precisely this
+-- and neither pairwise training nor its count-reweighted equivalent
+broadly beats plain or balanced cross-entropy on generic tabular data. Any
+contrary claim would contradict the consistency of the univariate
+baselines. The practical role of the equivalence is therefore cost
+reduction and certification wherever pairwise objectives are genuinely the
+right tool (ranking heads, verification, deep AUC maximization
+\citep{yuan2021}), not headline accuracy.
+
+\paragraph{4. Interpolating learners collapse, as predicted.} Wrapping
+gradient-boosted trees drives training AUC to $1.0$, all hard counts to
+zero, and Algorithm~\ref{alg:fwbpr} provably returns the balanced fit
+(identical AUC to four decimals); static balancing itself does not help
+boosting on these datasets. Rescuing interpolating learners requires
+out-of-fold count estimation or calibrated margins, which we leave open.
+
+\section{Discussion}
+\label{sec:discussion}
+
+The pairwise hinge for bipartite ranking and balanced cost-sensitive
+classification are one optimization problem seen from two coordinate
+systems, glued by a transportation polytope. The efficiency tricks of
+\citet{joachims2005} and \citet{chapelle2010}, the lambdas of
+LambdaMART, and the hardness weights of example-mining heuristics are all
+shadows of the same object; the polytope adds what the tricks lack -- an
+exact domain, a membership certificate, and a sandwich bound on the
+remaining gap. The equivalence also delimits its own practical value: since
+balanced univariate training is the first step of the pairwise optimization
+and is already AUC-consistent, no method in this family can dominate strong
+univariate baselines at scale, and our experiments bear this out. Where
+pairwise objectives earn their cost -- verification, metric-learning
+decision layers, extreme-imbalance regimes with limited positives
+\citep{yang2022} -- the identity of
+Proposition~\ref{prop:gradient} replaces them at univariate cost, and the
+certificate says how far from pairwise-optimal any reweighted solution
+sits. Extending the count refresh to interpolating learners via
+cross-fitting, and testing the substitution inside deep AUC-maximization
+pipelines, are the natural next steps.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}

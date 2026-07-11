@@ -1,0 +1,35 @@
+seed 0 (flip=0.0): train 383+/19125- val 67+ test 1000+ flipped 0
+  bce        test AUC 0.9677 (val 0.9609, ep 14, detect nan, 128s)
+  bce_bal    test AUC 0.9628 (val 0.9512, ep 14, detect nan, 2464s)
+  fw_hard    test AUC 0.9368 (val 0.9134, ep 6, detect nan, 122s)
+  fw_soft    test AUC 0.9298 (val 0.9032, ep 10, detect nan, 101s)
+  pair_batch test AUC 0.9706 (val 0.9545, ep 12, detect nan, 92s)
+seed 1 (flip=0.0): train 383+/19125- val 67+ test 1000+ flipped 0
+  bce        test AUC 0.9645 (val 0.9573, ep 14, detect nan, 87s)
+  bce_bal    test AUC 0.9656 (val 0.9645, ep 11, detect nan, 99s)
+  fw_hard    test AUC 0.9582 (val 0.9484, ep 13, detect nan, 99s)
+  fw_soft    test AUC 0.9465 (val 0.9380, ep 11, detect nan, 333s)
+  pair_batch test AUC 0.9672 (val 0.9653, ep 11, detect nan, 88s)
+seed 2 (flip=0.0): train 383+/19125- val 67+ test 1000+ flipped 0
+  bce        test AUC 0.9704 (val 0.9609, ep 10, detect nan, 84s)
+  bce_bal    test AUC 0.9672 (val 0.9600, ep 14, detect nan, 92s)
+  fw_hard    test AUC 0.9492 (val 0.9439, ep 10, detect nan, 108s)
+  fw_soft    test AUC 0.9245 (val 0.9229, ep 4, detect nan, 108s)
+  pair_batch test AUC 0.9688 (val 0.9681, ep 13, detect nan, 149s)
+
+Summary (mean +- std over seeds):
+  bce        AUC 0.9675 +- 0.0024  (n=3)
+  bce_bal    AUC 0.9652 +- 0.0018  (n=3)
+  fw_hard    AUC 0.9481 +- 0.0088  (n=3)
+  fw_soft    AUC 0.9336 +- 0.0094  (n=3)
+  pair_batch AUC 0.9689 +- 0.0014  (n=3)
+seed 0 (flip=0.15): train 383+/19125- val 67+ test 1000+ flipped 121
+  bce        test AUC 0.9621 (val 0.9236, ep 11, detect 0.881, 138s)
+  bce_bal    test AUC 0.9305 (val 0.9124, ep 10, detect 0.893, 121s)
+  fw_hard    test AUC 0.9379 (val 0.9006, ep 9, detect 0.894, 161s)
+  fw_soft    test AUC 0.9034 (val 0.8668, ep 11, detect 0.878, 230s)
+  pair_batch test AUC 0.9427 (val 0.9215, ep 4, detect 0.897, 310s)
+seed 1 (flip=0.15): train 383+/19125- val 67+ test 1000+ flipped 114
+  bce        test AUC 0.9541 (val 0.8788, ep 13, detect 0.861, 159s)
+  bce_bal    test AUC 0.9525 (val 0.8796, ep 14, detect 0.926, 168s)
+  fw_hard    test AUC 0.9462 (val 0.8680, ep 10, detect 0.915, 256s)

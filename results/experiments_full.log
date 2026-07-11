@@ -1,0 +1,40 @@
+Loading datasets...
+  breast_cancer: n=569, d=30, pos=212 (1:1.7)
+  synthetic_1to50: n=4000, d=20, pos=108 (1:36.0)
+  pima_diabetes: n=768, d=8, pos=268 (1:1.9)
+  german_credit: n=1000, d=20, pos=300 (1:2.3)
+  spambase: n=4601, d=57, pos=1813 (1:1.5)
+  satimage_4: n=6430, d=36, pos=625 (1:9.3)
+  abalone_19: n=4177, d=8, pos=94 (1:43.4)
+  [resume] breast_cancer: loaded 15 folds from checkpoint
+  [resume] synthetic_1to50: loaded 15 folds from checkpoint
+  [resume] pima_diabetes: loaded 15 folds from checkpoint
+  [resume] german_credit: loaded 15 folds from checkpoint
+spambase: done in 400s
+    lr_plain      AUC = 0.9699 +- 0.0034
+    lr_balanced   AUC = 0.9702 +- 0.0034
+    fw_lr         AUC = 0.9702 +- 0.0034
+    svm_plain     AUC = 0.9703 +- 0.0031
+    svm_balanced  AUC = 0.9699 +- 0.0037
+    fw_svm        AUC = 0.9695 +- 0.0034
+    ranksvm       AUC = 0.9702 +- 0.0036
+    gbt           AUC = 0.9865 +- 0.0025
+satimage_4: done in 420s
+    lr_plain      AUC = 0.7676 +- 0.0099
+    lr_balanced   AUC = 0.7633 +- 0.0108
+    fw_lr         AUC = 0.7635 +- 0.0112
+    svm_plain     AUC = 0.6946 +- 0.0292
+    svm_balanced  AUC = 0.7615 +- 0.0114
+    fw_svm        AUC = 0.7675 +- 0.0102
+    ranksvm       AUC = 0.7688 +- 0.0089
+    gbt           AUC = 0.9586 +- 0.0040
+abalone_19: done in 80s
+    lr_plain      AUC = 0.9083 +- 0.0222
+    lr_balanced   AUC = 0.9211 +- 0.0160
+    fw_lr         AUC = 0.9193 +- 0.0155
+    svm_plain     AUC = 0.8385 +- 0.0701
+    svm_balanced  AUC = 0.9187 +- 0.0163
+    fw_svm        AUC = 0.9190 +- 0.0190
+    ranksvm       AUC = 0.9226 +- 0.0162
+    gbt           AUC = 0.8236 +- 0.0360
+Wrote results/experiments.md

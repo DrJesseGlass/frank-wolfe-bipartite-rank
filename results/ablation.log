@@ -1,0 +1,22 @@
+  breast_cancer: n=569, d=30, pos=212 (1:1.7)
+  synthetic_1to50: n=4000, d=20, pos=108 (1:36.0)
+  pima_diabetes: n=768, d=8, pos=268 (1:1.9)
+  german_credit: n=1000, d=20, pos=300 (1:2.3)
+  spambase: n=4601, d=57, pos=1813 (1:1.5)
+  satimage_4: n=6430, d=36, pos=625 (1:9.3)
+  abalone_19: n=4177, d=8, pos=94 (1:43.4)
+breast_cancer/fw_lr: t0=0.9936 -> best t=2 (0.9944), delta=+0.0008
+breast_cancer/fw_svm: t0=0.9946 -> best t=0 (0.9946), delta=+0.0000
+synthetic_1to50/fw_lr: t0=0.7896 -> best t=8 (0.7973), delta=+0.0077
+synthetic_1to50/fw_svm: t0=0.7958 -> best t=0 (0.7958), delta=+0.0000
+pima_diabetes/fw_lr: t0=0.8311 -> best t=2 (0.8314), delta=+0.0002
+pima_diabetes/fw_svm: t0=0.8304 -> best t=7 (0.8328), delta=+0.0023
+german_credit/fw_lr: t0=0.7790 -> best t=0 (0.7790), delta=+0.0000
+german_credit/fw_svm: t0=0.7782 -> best t=0 (0.7782), delta=+0.0000
+spambase/fw_lr: t0=0.9710 -> best t=0 (0.9710), delta=+0.0000
+spambase/fw_svm: t0=0.9712 -> best t=0 (0.9712), delta=+0.0000
+satimage_4/fw_lr: t0=0.7667 -> best t=0 (0.7667), delta=+0.0000
+satimage_4/fw_svm: t0=0.7627 -> best t=5 (0.7711), delta=+0.0084
+abalone_19/fw_lr: t0=0.9210 -> best t=0 (0.9210), delta=+0.0000
+abalone_19/fw_svm: t0=0.9214 -> best t=0 (0.9214), delta=+0.0000
+Wrote results/ablation.md
