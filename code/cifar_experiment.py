@@ -18,27 +18,46 @@ Writes results/cifar_raw.json (checkpointed per seed/method) and prints a
 summary. Usage: python3 cifar_experiment.py [--seeds 3] [--epochs 15]
 """
 
+import argparse
 import json
 import os
-import sys
+import tarfile
 import time
+import urllib.request
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision
 import torchvision.transforms as T
 from sklearn.metrics import roc_auc_score
+
+from fwbpr import violation_counts, soft_violation_counts
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(HERE, "..", "results")
 DATA_DIR = os.path.join(HERE, "..", "data")
-DEVICE = ("mps" if torch.backends.mps.is_available() else "cpu")
-POS_CLASS = 1          # automobile
+DEVICE = ("cuda" if torch.cuda.is_available()
+          else "mps" if torch.backends.mps.is_available() else "cpu")
+# PNG distribution of CIFAR-10 (the cs.toronto.edu pickle mirror is
+# unreliably slow; this one is S3-backed)
+CIFAR_URL = "https://pjreddie.com/media/files/cifar.tgz"
 N_POS_TRAIN = 450      # ~1:50 against 22500 negatives
 N_NEG_TRAIN = 22500
 VAL_FRAC = 0.15
 BATCH = 128
+
+
+def _ensure_cifar():
+    d = os.path.join(DATA_DIR, "cifar")
+    if os.path.isdir(d):
+        return
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tgz = os.path.join(DATA_DIR, "cifar.tgz")
+    if not os.path.exists(tgz):
+        print(f"downloading {CIFAR_URL} ...", flush=True)
+        urllib.request.urlretrieve(CIFAR_URL, tgz)
+    with tarfile.open(tgz) as t:
+        t.extractall(DATA_DIR)
 
 
 def _load_split_pngs(split):
@@ -47,6 +66,7 @@ def _load_split_pngs(split):
     cache = os.path.join(DATA_DIR, f"cifar_{split}.pt")
     if os.path.exists(cache):
         return torch.load(cache)
+    _ensure_cifar()
     from PIL import Image
     d = os.path.join(DATA_DIR, "cifar", split)
     files = sorted(os.listdir(d))
@@ -126,20 +146,13 @@ def scores(model, X, bs=512):
 
 
 def counts_hard(s, y, margin):
-    from fwbpr import violation_counts
     return violation_counts(s.numpy().astype(float), y.numpy().astype(int),
                             margin=margin)
 
 
 def counts_soft(s, y):
-    sp = s[y == 1].numpy()
-    sn = s[y == 0].numpy()
-    c = np.zeros(len(y))
-    # chunked sum_j sigmoid(s_j - s_i)
-    sig = 1.0 / (1.0 + np.exp(-(sn[None, :] - sp[:, None])))
-    c[(y == 1).numpy()] = sig.sum(1)
-    c[(y == 0).numpy()] = sig.sum(0)
-    return c
+    return soft_violation_counts(s.numpy().astype(float),
+                                 y.numpy().astype(int))
 
 
 def detection_auroc(s_fit, yf, flip_mask):
@@ -210,7 +223,9 @@ def train_method(method, data, seed, epochs):
             best_val, best_ep = auc_v, ep
             test_at_best = roc_auc_score(yt.numpy(),
                                          scores(model, Xt).numpy())
-            det_at_best = detection_auroc(scores(model, Xf), yf, flip_mask)
+            # detection needs a full-train forward pass; skip on clean runs
+            det_at_best = (detection_auroc(scores(model, Xf), yf, flip_mask)
+                           if flip_mask.any() else float("nan"))
     return test_at_best, best_val, best_ep, det_at_best
 
 
@@ -218,12 +233,12 @@ METHODS = ["bce", "bce_bal", "fw_hard", "fw_soft", "pair_batch"]
 
 
 def main():
-    seeds = int(sys.argv[sys.argv.index("--seeds") + 1]) \
-        if "--seeds" in sys.argv else 3
-    epochs = int(sys.argv[sys.argv.index("--epochs") + 1]) \
-        if "--epochs" in sys.argv else 15
-    flip = float(sys.argv[sys.argv.index("--flip") + 1]) \
-        if "--flip" in sys.argv else 0.0
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--seeds", type=int, default=3)
+    ap.add_argument("--epochs", type=int, default=15)
+    ap.add_argument("--flip", type=float, default=0.0)
+    args = ap.parse_args()
+    seeds, epochs, flip = args.seeds, args.epochs, args.flip
     os.makedirs(RESULTS_DIR, exist_ok=True)
     tag = f"_flip{int(flip*100)}" if flip > 0 else ""
     path = os.path.join(RESULTS_DIR, f"cifar_raw{tag}.json")

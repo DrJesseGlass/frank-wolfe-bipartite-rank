@@ -16,7 +16,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
-from fwbpr import FWBPRanker, _score
+from fwbpr import FWBPRanker, _score, pad_curve
 from run_experiments import load_datasets, make_lr, make_svm
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -34,8 +34,7 @@ def trace(make_model, margin, X, y, rskf):
         r = FWBPRanker(make_model(), n_iter=N_ITER, margin=margin)
         r.fit(Xtr, ytr)
         aucs = [roc_auc_score(yt, _score(m, Xt)) for m in r.models_]
-        aucs += [aucs[-1]] * (N_ITER - len(aucs))
-        curves.append(aucs)
+        curves.append(pad_curve(aucs, N_ITER))
     return np.array(curves)
 
 

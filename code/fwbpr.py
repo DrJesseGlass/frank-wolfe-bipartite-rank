@@ -14,6 +14,7 @@ training set.
 """
 
 import numpy as np
+from scipy.optimize import minimize_scalar
 from sklearn.base import clone
 from sklearn.metrics import roc_auc_score
 
@@ -21,25 +22,67 @@ from sklearn.metrics import roc_auc_score
 def violation_counts(scores, y, margin=0.0):
     """Per-example counts of violated pairs: pair (i+, j-) is violated iff
     s_i - s_j < margin. O(N log N) via sorting."""
-    s_pos = np.sort(scores[y == 1])
-    s_neg = np.sort(scores[y == 0])
-    n_pos, n_neg = s_pos.size, s_neg.size
+    pos = y == 1
+    s_pos = np.sort(scores[pos])
+    s_neg = np.sort(scores[~pos])
     counts = np.zeros(y.size)
     # positive i: #{j : s_j > s_i - margin}
-    counts[y == 1] = n_neg - np.searchsorted(
-        s_neg, scores[y == 1] - margin, side="right")
+    counts[pos] = s_neg.size - np.searchsorted(
+        s_neg, scores[pos] - margin, side="right")
     # negative j: #{i : s_i < s_j + margin}
-    counts[y == 0] = np.searchsorted(
-        s_pos, scores[y == 0] + margin, side="left")
+    counts[~pos] = np.searchsorted(
+        s_pos, scores[~pos] + margin, side="left")
     return counts
 
 
-def _score(model, X):
+def soft_violation_counts(scores, y):
+    """Soft counts c_i = sum_j sigmoid(s_j - s_i) over opposite-class j --
+    the pairwise-logistic gradient magnitudes. Exact cost O(n+ n-)."""
+    pos = y == 1
+    sp, sn = scores[pos], scores[~pos]
+    sig = 1.0 / (1.0 + np.exp(-(sn[None, :] - sp[:, None])))
+    c = np.zeros(y.size)
+    c[pos] = sig.sum(axis=1)
+    c[~pos] = sig.sum(axis=0)
+    return c
+
+
+def normalized_violation_counts(scores, y, margin=0.0):
+    """Counts divided by opposite-class size = 1 - per-point AUC."""
+    n_pos = int((y == 1).sum())
+    denom = np.where(y == 1, y.size - n_pos, n_pos)
+    return violation_counts(scores, y, margin) / denom
+
+
+def balanced_counts(y):
+    """Every-pair-violated counts (n- per positive, n+ per negative): the
+    first Frank-Wolfe vertex, i.e. balanced class weighting."""
+    n_pos = int((y == 1).sum())
+    return np.where(y == 1, float(y.size - n_pos), float(n_pos))
+
+
+def counts_to_weights(counts):
+    """Normalize counts to mean-1 sample weights."""
+    return counts * (counts.size / counts.sum())
+
+
+def pad_curve(vals, n):
+    """Pad an early-stopped per-iteration trace with its last value."""
+    vals = list(vals)
+    return vals + [vals[-1]] * (n - len(vals))
+
+
+def score(model, X):
+    """Ranking score of a fitted model: decision_function when available,
+    else log-odds from predict_proba."""
     if hasattr(model, "decision_function"):
         return model.decision_function(X)
     p = model.predict_proba(X)[:, 1]
     p = np.clip(p, 1e-12, 1 - 1e-12)
     return np.log(p / (1 - p))
+
+
+_score = score  # backward-compatible alias
 
 
 class FWBPRanker:
@@ -59,15 +102,13 @@ class FWBPRanker:
 
     def fit(self, X, y, X_val=None, y_val=None):
         y = np.asarray(y)
-        n_pos, n_neg = int((y == 1).sum()), int((y == 0).sum())
-        N = y.size
         # balanced initialization = first FW subproblem: every pair violated
-        counts = np.where(y == 1, float(n_neg), float(n_pos))
+        counts = balanced_counts(y)
         self.models_, self.history_ = [], []
         best_auc, best_model = -np.inf, None
         prev_counts = None
         for it in range(self.n_iter):
-            w = counts * (N / counts.sum())
+            w = counts_to_weights(counts)
             model = clone(self.estimator)
             model.fit(X, y, sample_weight=w)
             s_train = _score(model, X)
@@ -120,16 +161,13 @@ class FWBPREnsembleRanker:
         self.margin = margin
 
     def fit(self, X, y, X_val=None, y_val=None):
-        from scipy.optimize import minimize_scalar
         y = np.asarray(y)
-        n_pos, n_neg = int((y == 1).sum()), int((y == 0).sum())
-        N = y.size
-        counts = np.where(y == 1, float(n_neg), float(n_pos))
+        counts = balanced_counts(y)
         self.models_, self.coefs_, self.history_ = [], [], []
-        s_ens = np.zeros(N)
+        s_ens = np.zeros(y.size)
         s_val = np.zeros(len(y_val)) if X_val is not None else None
         for it in range(self.n_iter):
-            w = counts * (N / counts.sum())
+            w = counts_to_weights(counts)
             model = clone(self.estimator)
             model.fit(X, y, sample_weight=w)
             s_t = _score(model, X)

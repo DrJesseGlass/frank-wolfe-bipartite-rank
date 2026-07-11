@@ -49,6 +49,15 @@ class Problem:
         self.caps = np.concatenate([
             np.full(n_pos, self.Cbar * n_neg),
             np.full(n_neg, self.Cbar * n_pos)])
+        # row/col-sum constraint matrix of the transportation LP; depends
+        # only on the shape, so build it once (lp_ok is called thousands
+        # of times per suite run)
+        A = np.zeros((n_pos + n_neg, n_pos * n_neg))
+        for i in range(n_pos):
+            A[i, i * n_neg:(i + 1) * n_neg] = 1.0
+        for j in range(n_neg):
+            A[n_pos + j, j::n_neg] = 1.0
+        self.A_lp = A
 
     def phi(self, rho):
         R = rho.reshape(self.n_pos, self.n_neg)
@@ -125,12 +134,7 @@ def lp_ok(p, lam, tol=1e-8):
     if lam.min() < -tol or abs(lp_.sum() - ln_.sum()) > tol:
         return False
     n = p.n_pos * p.n_neg
-    A = np.zeros((p.n_pos + p.n_neg, n))
-    for i in range(p.n_pos):
-        A[i, i * p.n_neg:(i + 1) * p.n_neg] = 1.0
-    for j in range(p.n_neg):
-        A[p.n_pos + j, j::p.n_neg] = 1.0
-    res = linprog(-np.ones(n), A_ub=A, b_ub=lam, bounds=(0.0, p.Cbar),
+    res = linprog(-np.ones(n), A_ub=p.A_lp, b_ub=lam, bounds=(0.0, p.Cbar),
                   method="highs")
     return res.status == 0 and (lp_.sum() + res.fun) < tol  # -res.fun = max flow
 
@@ -303,11 +307,9 @@ def test_sandwich(p, rng, rho_s, dval, lam_s, bval):
 def test_fw_bridge(p, rng):
     n_pairs = p.n_pos * p.n_neg
     for trial in range(20):
-        w = np.zeros(p.d) if trial == 0 else rng.normal(size=p.d) * rng.uniform(0.2, 3)
-        lam_cur = p.phi(rng.uniform(0, p.Cbar, n_pairs)) if trial else np.zeros(p.N)
-        # rebuild w consistently from a current dual point
-        if trial:
-            w = p.w_from_lam(lam_cur)
+        lam_cur = (np.zeros(p.N) if trial == 0
+                   else p.phi(rng.uniform(0, p.Cbar, n_pairs)))
+        w = p.w_from_lam(lam_cur)
         g = p.Q @ lam_cur - 1.0
         # LMO over T via rho-space LP
         cost = np.add.outer(g[:p.n_pos], g[p.n_pos:]).ravel()

@@ -16,7 +16,7 @@ import numpy as np
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
-from fwbpr import FWBPREnsembleRanker
+from fwbpr import FWBPREnsembleRanker, pad_curve
 from run_experiments import load_datasets, make_lr, make_svm
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -36,18 +36,18 @@ def main():
     for dname, key, mk, margin in PANELS:
         X, y = datasets[dname]
         curves, gammas = [], []
-        for fold, (tr, te) in enumerate(rskf.split(X, y)):
+        for tr, te in rskf.split(X, y):
             sc = StandardScaler().fit(X[tr])
             Xtr, Xt = sc.transform(X[tr]), sc.transform(X[te])
             r = FWBPREnsembleRanker(mk(), n_iter=N_ITER, margin=margin)
             r.fit(Xtr, y[tr], Xt, y[te])   # test passed as trace set only
-            a = [h["val_auc"] for h in r.history_]
-            a += [a[-1]] * (N_ITER - len(a))
-            curves.append(a)
+            curves.append(pad_curve([h["val_auc"] for h in r.history_],
+                                    N_ITER))
             gammas.append([h["gamma"] for h in r.history_])
         c = np.array(curves)
         out[dname] = dict(method=key, curves=c.tolist(), gammas=gammas)
-        raw = np.array(abl[dname][key]).mean(0)
+        abl_c = np.array(abl[dname][key])
+        raw = abl_c.mean(0)
         m = c.mean(0)
         gmed = [round(float(np.median([g[t] for g in gammas
                                        if len(g) > t])), 3)
@@ -56,7 +56,7 @@ def main():
         print(f"  raw  (gamma=1): " + " ".join(f"{v:.4f}" for v in raw))
         print(f"  line-searched : " + " ".join(f"{v:.4f}" for v in m))
         print(f"  median gamma t=1..5: {gmed}")
-        print(f"  final: raw best-so-far {np.maximum.accumulate(np.array(abl[dname][key]), 1).mean(0)[-1]:.4f}, "
+        print(f"  final: raw best-so-far {np.maximum.accumulate(abl_c, 1).mean(0)[-1]:.4f}, "
               f"LS final {m[-1]:.4f}, balanced {m[0]:.4f}")
     with open(os.path.join(RESULTS_DIR, "linesearch_raw.json"), "w") as f:
         json.dump(out, f)

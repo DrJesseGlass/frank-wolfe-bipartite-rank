@@ -33,7 +33,7 @@ from sklearn.model_selection import RepeatedStratifiedKFold, train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import LinearSVC
 
-from fwbpr import FWBPRanker, _score
+from fwbpr import FWBPRanker, _score, balanced_counts, counts_to_weights
 
 warnings.filterwarnings("ignore")
 
@@ -127,7 +127,8 @@ def fit_ranksvm(X, y, C, rng, max_pairs=30000):
 def eval_method(method, Xf, yf, Xv, yv, Xt, yt, rng):
     """Tune C on validation AUC; return test AUC of the selected model."""
     best_auc_v, best_model = -np.inf, None
-    for C in C_GRID:
+    grid = C_GRID[:1] if method == "gbt" else C_GRID  # no C grid for trees
+    for C in grid:
         if method == "lr_plain":
             m = make_lr(C).fit(Xf, yf)
         elif method == "lr_balanced":
@@ -145,25 +146,20 @@ def eval_method(method, Xf, yf, Xv, yv, Xt, yt, rng):
         elif method == "ranksvm":
             m = fit_ranksvm(Xf, yf, C, rng)
         elif method == "gbt":
-            if C != C_GRID[0]:
-                continue  # no C grid for trees
-            w = np.where(yf == 1, (yf == 0).sum(), (yf == 1).sum()).astype(float)
             m = HistGradientBoostingClassifier(random_state=0)
-            m.fit(Xf, yf, sample_weight=w / w.mean())
+            m.fit(Xf, yf,
+                  sample_weight=counts_to_weights(balanced_counts(yf)))
         else:
             raise ValueError(method)
-        if method == "ranksvm":
-            sv = Xv @ m.coef_.ravel()
+        # ranksvm's LinearSVC has fit_intercept=False, so _score (its
+        # decision_function) equals Xv @ coef_ -- no special case needed
+        if isinstance(m, FWBPRanker):
+            auc_v = m.best_auc_  # already computed on (Xv, yv) during fit
         else:
-            sv = _score(m, Xv)
-        auc_v = roc_auc_score(yv, sv)
+            auc_v = roc_auc_score(yv, _score(m, Xv))
         if auc_v > best_auc_v:
-            best_auc_v, best_model, best_is_rank = auc_v, m, method == "ranksvm"
-    if best_is_rank:
-        st = Xt @ best_model.coef_.ravel()
-    else:
-        st = _score(best_model, Xt)
-    return roc_auc_score(yt, st)
+            best_auc_v, best_model = auc_v, m
+    return roc_auc_score(yt, _score(best_model, Xt))
 
 
 METHODS = ["lr_plain", "lr_balanced", "fw_lr",
@@ -216,7 +212,7 @@ def main():
             v = np.array(results[dname][m], dtype=float)
             print(f"    {m:13s} AUC = {np.nanmean(v):.4f} +- {np.nanstd(v):.4f}")
         # checkpoint after each dataset
-        with open(os.path.join(RESULTS_DIR, "experiments_raw.json"), "w") as f:
+        with open(ckpt_path, "w") as f:
             json.dump(results, f, indent=1)
 
     write_markdown(results, n_repeats)
@@ -238,7 +234,7 @@ def write_markdown(results, n_repeats):
         top = max(means.values())
         for m in METHODS:
             v = np.array(per[m], dtype=float)
-            s = f"{np.nanmean(v):.4f}±{np.nanstd(v):.3f}"
+            s = f"{means[m]:.4f}±{np.nanstd(v):.3f}"
             if means[m] >= top - 1e-9:
                 s = f"**{s}**"
             cells.append(s)

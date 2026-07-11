@@ -25,3 +25,11 @@ Summary (mean +- std over seeds):
   pair_batch AUC 0.9689 +- 0.0014  (n=3)
 seed 0 (flip=0.15): train 383+/19125- val 67+ test 1000+ flipped 121
   bce        test AUC 0.9621 (val 0.9236, ep 11, detect 0.881, 138s)
+  bce_bal    test AUC 0.9305 (val 0.9124, ep 10, detect 0.893, 121s)
+  fw_hard    test AUC 0.9379 (val 0.9006, ep 9, detect 0.894, 161s)
+  fw_soft    test AUC 0.9034 (val 0.8668, ep 11, detect 0.878, 230s)
+  pair_batch test AUC 0.9427 (val 0.9215, ep 4, detect 0.897, 310s)
+seed 1 (flip=0.15): train 383+/19125- val 67+ test 1000+ flipped 114
+  bce        test AUC 0.9541 (val 0.8788, ep 13, detect 0.861, 159s)
+  bce_bal    test AUC 0.9525 (val 0.8796, ep 14, detect 0.926, 168s)
+  fw_hard    test AUC 0.9462 (val 0.8680, ep 10, detect 0.915, 256s)

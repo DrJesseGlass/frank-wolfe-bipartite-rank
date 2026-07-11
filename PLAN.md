@@ -156,6 +156,37 @@ Paper relevance: extends cor:fw_bridge beyond linear models; connects to
 hard-example mining / ArcFace-style weighted-classification losses and deep
 AUC maximization (cite Yang & Ying 2022, LibAUC).
 
+## Phase 2c — Deep regime + label noise (CIFAR, added 2026-07-11)
+
+Setup: CIFAR-10 automobile-vs-rest at 1:50 (`code/cifar_experiment.py`),
+small CNN, methods bce / bce_bal / fw_hard / fw_soft / pair_batch, epoch
+selected on validation. Noise arm: 15% pair-swap label flips (noisy val
+too) + mislabel-detection AUROC from normalized violation counts.
+
+**Status: PAUSED 2026-07-11 (user request — machine load).**
+- Clean arm: COMPLETE (3 seeds) → `results/cifar_raw.json`.
+- Noise arm: ~1.5/3 seeds → `results/cifar_raw_flip15.json`. Early read:
+  BCE most noise-robust (0.962 vs 0.93–0.94 for count/pairwise, seed 0);
+  count statistic detects flips at AUROC 0.86–0.93 — both pre-registered
+  predictions pointing the expected way.
+- Log: `results/cifar.log`.
+
+**To resume (any machine):**
+```
+pip install -r requirements.txt
+cd code
+python3 cifar_experiment.py --seeds 3 --epochs 15              # clean (all cached, no-op)
+python3 cifar_experiment.py --seeds 3 --epochs 15 --flip 0.15  # noise (resumes at seed 1)
+```
+The script auto-downloads CIFAR (pjreddie mirror), caches decoded tensors
+in `data/` (gitignored), picks cuda > mps > cpu, and skips any
+(method, seed) already in the checkpoint JSON. Tabular datasets re-fetch
+from OpenML automatically. Caveat: remaining noise-arm seeds run on new
+hardware — float trajectories differ across devices; rerun the whole arm
+with `rm results/cifar_raw_flip15.json` if reviewer-grade consistency
+matters. Planned third arm (not started): long-training regime, 60+
+epochs, gap-vs-training-length + detection-window trace.
+
 ## Phase 3 — Paper integration
 
 **Status: DRAFT ASSEMBLED 2026-07-10 — `main.tex` compiles with tectonic

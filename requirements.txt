@@ -1,0 +1,9 @@
+# Python >= 3.10. Tested with Python 3.14.
+numpy>=2.0
+scipy>=1.14
+scikit-learn>=1.5
+matplotlib>=3.9
+torch>=2.4          # cifar_experiment.py / deepnet_check.py; picks cuda > mps > cpu
+torchvision>=0.19   # transforms only
+pillow>=10.0        # PNG decoding for the CIFAR mirror
+# LaTeX: `tectonic main.tex` builds the paper (no TeX Live needed).

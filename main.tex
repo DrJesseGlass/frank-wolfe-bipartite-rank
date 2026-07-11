@@ -46,8 +46,8 @@ problem whose weights count misordered opposite-class examples, and balanced
 classification is precisely the first Frank--Wolfe step; (iii) at the
 gradient level the equivalence holds for \emph{any} differentiable scorer:
 the parameter gradient of a decomposable pairwise loss equals the gradient of
-a count-weighted univariate loss, computable in $O(N\log N)$ without forming
-pairs. This geometry unifies a family of known efficiency results and
+a count-weighted univariate loss, whose weights for the pairwise hinge are
+computable in $O(N\log N)$ without forming pairs. This geometry unifies a family of known efficiency results and
 reweighting heuristics -- structural-SVM cutting planes, sorted-gradient
 RankSVM solvers, LambdaMART's per-document lambdas, hard-example mining --
 as views of one object. Experiments confirm the theory's predictions,
@@ -211,7 +211,10 @@ For the margin hinge $\ell(u) = [\,m - u\,]_+$ the weights are the
 $c_j = \#\{i : s_i - s_j < m\}$, computable for all examples in
 $O(N \log N)$ by two sorts. For the logistic surrogate
 $\ell(u) = \log(1 + e^{-u})$ they are the soft counts
-$c_i = \sum_j \sigma(s_j - s_i)$.
+$c_i = \sum_j \sigma(s_j - s_i)$; unlike the hard counts, evaluating the
+soft counts exactly costs $O(n^+ n^-)$ (they can be approximated in
+near-linear time, e.g.\ by binning the opposite-class scores, but we do not
+rely on this).
 \end{proposition}
 
 \begin{proof}

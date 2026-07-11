@@ -28,7 +28,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-from fwbpr import violation_counts
+from fwbpr import violation_counts, soft_violation_counts
 from run_experiments import load_datasets
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -92,12 +92,7 @@ def part_a():
         def pair_logistic(s):
             return F.softplus(-(s[pos][:, None] - s[neg][None, :])).sum()
 
-        sp, sn = s0[y == 1], s0[y == 0]
-        soft_pos = 1.0 / (1.0 + np.exp(-(sn[None, :] - sp[:, None])))
-        c_soft = np.zeros(y.size)
-        c_soft[y == 1] = soft_pos.sum(axis=1)
-        c_soft[y == 0] = soft_pos.sum(axis=0)
-        cs = torch.tensor(c_soft)
+        cs = torch.tensor(soft_violation_counts(s0, y))
 
         def lin_soft(s):
             return (cs[neg] * s[neg]).sum() - (cs[pos] * s[pos]).sum()
@@ -136,11 +131,8 @@ def train(method, Xtr, ytr, Xv, yv, Xt, yt, seed, epochs=400, margin=2.0):
         s = net(Xtr_t).squeeze(1)
         if method == "bce_plain":
             loss = F.binary_cross_entropy_with_logits(s, ytr_t)
-        elif method == "bce_balanced":
-            wb = torch.where(pos, float(n_neg), float(n_pos))
-            loss = F.binary_cross_entropy_with_logits(
-                s, ytr_t, weight=wb * (N / wb.sum()))
-        elif method == "fw_bce":
+        elif method in ("bce_balanced", "fw_bce"):
+            # w starts balanced for both; fw_bce refreshes it below
             loss = F.binary_cross_entropy_with_logits(s, ytr_t, weight=w)
         elif method == "pair_logistic":
             loss = F.softplus(-(s[pos][:, None] - s[neg][None, :])).mean()

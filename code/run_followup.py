@@ -17,6 +17,7 @@ Writes results/followup.md, followup_raw.json.
 
 import json
 import os
+import sys
 import time
 
 import numpy as np
@@ -26,7 +27,8 @@ from sklearn.model_selection import (RepeatedStratifiedKFold, StratifiedKFold,
                                      train_test_split)
 from sklearn.preprocessing import StandardScaler
 
-from fwbpr import FWBPRanker, _score
+from fwbpr import (FWBPRanker, _score, balanced_counts, counts_to_weights,
+                   pad_curve)
 from run_experiments import load_datasets, make_lr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -40,45 +42,54 @@ EXP2_DATASETS = ["synthetic_1to50", "spambase", "satimage_4", "abalone_19"]
 def fw_val_curve(C, margin, Xf, yf, Xv, yv):
     r = FWBPRanker(make_lr(C), n_iter=N_ITER, margin=margin)
     r.fit(Xf, yf, Xv, yv)
-    a = [h["auc"] for h in r.history_]
-    return np.array(a + [a[-1]] * (N_ITER - len(a)))
+    return np.array(pad_curve([h["auc"] for h in r.history_], N_ITER))
+
+
+def _inner_scaled(Xtr, ytr, seed, n_inner=2):
+    """Inner-CV splits with the scaler fit on each inner-training part only
+    (no leakage of inner-validation statistics into candidate models)."""
+    inner = StratifiedKFold(n_inner, shuffle=True, random_state=seed)
+    for i, v in inner.split(Xtr, ytr):
+        sc = StandardScaler().fit(Xtr[i])
+        yield sc.transform(Xtr[i]), ytr[i], sc.transform(Xtr[v]), ytr[v]
 
 
 def fw_lr_cvselect(Xtr, ytr, Xt, yt, margin, seed):
-    """Joint (C, t) by inner-2-fold mean validation curve; refit at (C, t)."""
-    inner = StratifiedKFold(2, shuffle=True, random_state=seed)
+    """Joint (C, t) by inner-2-fold mean validation curve; refit at (C, t).
+    Takes UNSCALED data; scaling is fit within each inner split and refit
+    on the full training fold for the final model."""
     best = (-np.inf, None, None)
     for C in C_GRID:
-        curves = [fw_val_curve(C, margin, Xtr[i], ytr[i], Xtr[v], ytr[v])
-                  for i, v in inner.split(Xtr, ytr)]
+        curves = [fw_val_curve(C, margin, Xf, yf, Xv, yv)
+                  for Xf, yf, Xv, yv in _inner_scaled(Xtr, ytr, seed)]
         mean = np.mean(curves, axis=0)
         t = int(mean.argmax())
         if mean[t] > best[0]:
             best = (mean[t], C, t)
     _, C, t = best
+    sc = StandardScaler().fit(Xtr)
     r = FWBPRanker(make_lr(C), n_iter=t + 1, margin=margin)
-    r.fit(Xtr, ytr)
+    r.fit(sc.transform(Xtr), ytr)
     model = r.models_[min(t, len(r.models_) - 1)]
-    return roc_auc_score(yt, _score(model, Xt)), C, t
+    return roc_auc_score(yt, _score(model, sc.transform(Xt))), C, t
 
 
 def lr_balanced_cvselect(Xtr, ytr, Xt, yt, seed):
-    inner = StratifiedKFold(2, shuffle=True, random_state=seed)
     best = (-np.inf, None)
     for C in C_GRID:
         aucs = []
-        for i, v in inner.split(Xtr, ytr):
-            m = make_lr(C, balanced=True).fit(Xtr[i], ytr[i])
-            aucs.append(roc_auc_score(ytr[v], _score(m, Xtr[v])))
+        for Xf, yf, Xv, yv in _inner_scaled(Xtr, ytr, seed):
+            m = make_lr(C, balanced=True).fit(Xf, yf)
+            aucs.append(roc_auc_score(yv, _score(m, Xv)))
         if np.mean(aucs) > best[0]:
             best = (np.mean(aucs), C)
-    m = make_lr(best[1], balanced=True).fit(Xtr, ytr)
-    return roc_auc_score(yt, _score(m, Xt))
+    sc = StandardScaler().fit(Xtr)
+    m = make_lr(best[1], balanced=True).fit(sc.transform(Xtr), ytr)
+    return roc_auc_score(yt, _score(m, sc.transform(Xt)))
 
 
-def exp1():
+def exp1(datasets):
     print("Exp 1: inner-CV iterate selection for fw_lr (+ margin sweep)")
-    datasets = load_datasets(quick=False)
     rskf = RepeatedStratifiedKFold(n_splits=3, n_repeats=5, random_state=42)
     methods = ["lr_balanced_cv", "fw_lr_cv_m0", "fw_lr_cv_m2"]
     raw = {}
@@ -88,8 +99,7 @@ def exp1():
         raw[dname]["chosen_t_m0"] = []
         t0 = time.time()
         for fold, (tr, te) in enumerate(rskf.split(X, y)):
-            sc = StandardScaler().fit(X[tr])
-            Xtr, Xt = sc.transform(X[tr]), sc.transform(X[te])
+            Xtr, Xt = X[tr], X[te]   # unscaled; helpers scale per split
             ytr, yt = y[tr], y[te]
             raw[dname]["lr_balanced_cv"].append(
                 lr_balanced_cvselect(Xtr, ytr, Xt, yt, seed=fold))
@@ -112,9 +122,8 @@ def make_gbt():
     return HistGradientBoostingClassifier(random_state=0)
 
 
-def exp2():
+def exp2(datasets):
     print("Exp 2: FW-BPR around gradient-boosted trees")
-    datasets = load_datasets(quick=False)
     rskf = RepeatedStratifiedKFold(n_splits=3, n_repeats=5, random_state=42)
     methods = ["gbt_plain", "gbt_balanced", "fw_gbt"]
     raw = {}
@@ -129,8 +138,8 @@ def exp2():
             m = make_gbt().fit(Xf, yf)
             raw[dname]["gbt_plain"].append(
                 roc_auc_score(yt, _score(m, Xt)))
-            wb = np.where(yf == 1, (yf == 0).sum(), (yf == 1).sum()).astype(float)
-            m = make_gbt().fit(Xf, yf, sample_weight=wb / wb.mean())
+            m = make_gbt().fit(
+                Xf, yf, sample_weight=counts_to_weights(balanced_counts(yf)))
             raw[dname]["gbt_balanced"].append(
                 roc_auc_score(yt, _score(m, Xt)))
             r = FWBPRanker(make_gbt(), n_iter=N_ITER, margin=0.0)
@@ -159,8 +168,14 @@ def paired(raw, a, b):
 
 def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    r1 = exp1()
-    r2 = exp2()
+    datasets = load_datasets(quick=False)
+    # --exp1-only / --exp2-only rerun one experiment and reuse the other's
+    # checkpoint for the markdown summary
+    def cached(name):
+        with open(os.path.join(RESULTS_DIR, f"{name}.json")) as f:
+            return json.load(f)
+    r1 = cached("followup_exp1") if "--exp2-only" in sys.argv else exp1(datasets)
+    r2 = cached("followup_exp2") if "--exp1-only" in sys.argv else exp2(datasets)
     lines = ["# Follow-up experiments", "",
              "## Exp 1: proper (C, t) selection for fw_lr "
              "(inner 2-fold CV, refit at chosen iterate)", "",

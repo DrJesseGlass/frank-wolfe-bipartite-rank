@@ -4,5 +4,47 @@
   "val_auc": 0.9236130458817026,
   "best_epoch": 11,
   "detect_auroc": 0.8812395372719302
+ },
+ "bce_bal_s0": {
+  "test_auc": 0.9304861111111112,
+  "val_auc": 0.9124112769485905,
+  "best_epoch": 10,
+  "detect_auroc": 0.892695198750803
+ },
+ "fw_hard_s0": {
+  "test_auc": 0.9379092222222223,
+  "val_auc": 0.9005682697622996,
+  "best_epoch": 9,
+  "detect_auroc": 0.8944026989202528
+ },
+ "fw_soft_s0": {
+  "test_auc": 0.9034095555555555,
+  "val_auc": 0.8668037589828634,
+  "best_epoch": 11,
+  "detect_auroc": 0.8776599894195096
+ },
+ "pair_batch_s0": {
+  "test_auc": 0.9427077777777778,
+  "val_auc": 0.9215389718076284,
+  "best_epoch": 4,
+  "detect_auroc": 0.8966104491081397
+ },
+ "bce_s1": {
+  "test_auc": 0.954061111111111,
+  "val_auc": 0.8787794361525705,
+  "best_epoch": 13,
+  "detect_auroc": 0.8607014015910148
+ },
+ "bce_bal_s1": {
+  "test_auc": 0.9525471111111111,
+  "val_auc": 0.8795533443891652,
+  "best_epoch": 14,
+  "detect_auroc": 0.9264881614679166
+ },
+ "fw_hard_s1": {
+  "test_auc": 0.9461636666666667,
+  "val_auc": 0.8680375898286347,
+  "best_epoch": 10,
+  "detect_auroc": 0.915090170770848
  }
 }
