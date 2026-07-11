@@ -1,0 +1,26 @@
+{
+ "bce_s0": {
+  "test_auc": 0.9676694444444445,
+  "val_auc": 0.960906578220011,
+  "best_epoch": 14,
+  "detect_auroc": NaN
+ },
+ "bce_bal_s0": {
+  "test_auc": 0.96281,
+  "val_auc": 0.9511730237700387,
+  "best_epoch": 14,
+  "detect_auroc": NaN
+ },
+ "fw_hard_s0": {
+  "test_auc": 0.9367906666666667,
+  "val_auc": 0.9134195688225539,
+  "best_epoch": 6,
+  "detect_auroc": NaN
+ },
+ "fw_soft_s0": {
+  "test_auc": 0.9298112222222223,
+  "val_auc": 0.9031818684355999,
+  "best_epoch": 10,
+  "detect_auroc": NaN
+ }
+}

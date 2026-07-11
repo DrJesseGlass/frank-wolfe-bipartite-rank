@@ -1,0 +1,5 @@
+seed 0 (flip=0.0): train 383+/19125- val 67+ test 1000+ flipped 0
+  bce        test AUC 0.9677 (val 0.9609, ep 14, detect nan, 128s)
+  bce_bal    test AUC 0.9628 (val 0.9512, ep 14, detect nan, 2464s)
+  fw_hard    test AUC 0.9368 (val 0.9134, ep 6, detect nan, 122s)
+  fw_soft    test AUC 0.9298 (val 0.9032, ep 10, detect nan, 101s)
